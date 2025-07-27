@@ -1,27 +1,46 @@
 import requests
 from bs4 import BeautifulSoup
 import csv
+import tkinter as tk
+from tkinter import messagebox
 
-# Fetch page
-url = "https://www.python.org/"
-response = requests.get(url)
-soup = BeautifulSoup(response.text, "html.parser")
+def scrape_data():
+    url = entry.get().strip()
+    if not url:
+        messagebox.showerror("Error", "Please enter a valid URL.")
+        return
 
-# Extract upcoming events
-data = []
-events_section = soup.find("div", class_="medium-widget event-widget last")
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, "html.parser")
 
-if events_section:
-    for li in events_section.find_all("li"):
-        title = li.find("a").get_text(strip=True)
-        link = "https://www.python.org" + li.find("a")["href"]
-        date = li.find("time").get_text(strip=True)
-        data.append([title, date, link])
+        data = []
+        for para in soup.find_all("p"):
+            text = para.get_text(strip=True)
+            if text:
+                data.append([text])
 
-# Save to CSV
-with open("python_org_events.csv", mode="w", newline='', encoding="utf-8") as file:
-    writer = csv.writer(file)
-    writer.writerow(["Event Title", "Date", "Link"])
-    writer.writerows(data)
+        if data:
+            with open("scraped_data.csv", mode="w", newline='', encoding="utf-8") as file:
+                writer = csv.writer(file)
+                writer.writerow(["Paragraph Text"])
+                writer.writerows(data)
+            messagebox.showinfo("Success", "Data scraped and saved to 'scraped_data.csv'")
+        else:
+            messagebox.showinfo("No Data", "No paragraph data found on the page.")
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred:\n{e}")
 
-print("Event report saved as 'python_org_events.csv'")
+# GUI Setup
+window = tk.Tk()
+window.title("Website Paragraph Scraper")
+window.geometry("400x180")
+
+tk.Label(window, text="Enter Website URL:", font=("Arial", 12)).pack(pady=10)
+entry = tk.Entry(window, width=50)
+entry.pack(pady=5)
+
+scrape_btn = tk.Button(window, text="Scrape Data", command=scrape_data, bg="green", fg="white", font=("Arial", 11))
+scrape_btn.pack(pady=15)
+
+window.mainloop()

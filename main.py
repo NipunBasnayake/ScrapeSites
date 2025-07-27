@@ -1,46 +1,58 @@
-import requests
-from bs4 import BeautifulSoup
-import csv
 import tkinter as tk
 from tkinter import messagebox
+from scraper import scrape_paragraphs
 
-def scrape_data():
-    url = entry.get().strip()
+def on_scrape_click():
+    url = url_entry.get().strip()
     if not url:
-        messagebox.showerror("Error", "Please enter a valid URL.")
+        messagebox.showerror("Input Error", "Please enter a valid URL.")
         return
 
-    try:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, "html.parser")
+    success, message = scrape_paragraphs(url)
+    if success:
+        messagebox.showinfo("Success! " + message)
+    else:
+        messagebox.showwarning("Warning", message)
 
-        data = []
-        for para in soup.find_all("p"):
-            text = para.get_text(strip=True)
-            if text:
-                data.append([text])
 
-        if data:
-            with open("scraped_data.csv", mode="w", newline='', encoding="utf-8") as file:
-                writer = csv.writer(file)
-                writer.writerow(["Paragraph Text"])
-                writer.writerows(data)
-            messagebox.showinfo("Success", "Data scraped and saved to 'scraped_data.csv'")
-        else:
-            messagebox.showinfo("No Data", "No paragraph data found on the page.")
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred:\n{e}")
-
-# GUI Setup
 window = tk.Tk()
 window.title("Website Paragraph Scraper")
-window.geometry("400x180")
 
-tk.Label(window, text="Enter Website URL:", font=("Arial", 12)).pack(pady=10)
-entry = tk.Entry(window, width=50)
-entry.pack(pady=5)
+window_width = 450
+window_height = 220
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+x = int((screen_width / 2) - (window_width / 2))
+y = int((screen_height / 2) - (window_height / 2))
+window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+window.resizable(False, False)
+window.configure(bg="#f4f4f4")
 
-scrape_btn = tk.Button(window, text="Scrape Data", command=scrape_data, bg="green", fg="white", font=("Arial", 11))
-scrape_btn.pack(pady=15)
+label_font = ("Segoe UI", 12)
+entry_font = ("Segoe UI", 11)
+button_font = ("Segoe UI", 11, "bold")
+
+frame = tk.Frame(window, bg="#f4f4f4", padx=20, pady=20)
+frame.pack(expand=True)
+
+heading = tk.Label(frame, text="Enter Website URL to Scraper", font=("Segoe UI", 14, "bold"), bg="#f4f4f4", fg="#333")
+heading.pack(pady=(0, 10))
+
+url_entry = tk.Entry(frame, width=45, font=entry_font, relief="groove", borderwidth=2)
+url_entry.pack(pady=(2, 10))
+
+scrape_btn = tk.Button(
+    frame,
+    text="Scrape Data",
+    font=button_font,
+    bg="#4CAF50",
+    fg="white",
+    activebackground="#45a049",
+    relief="flat",
+    padx=10,
+    pady=5,
+    command=on_scrape_click
+)
+scrape_btn.pack(pady=10)
 
 window.mainloop()

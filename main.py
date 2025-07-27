@@ -3,20 +3,25 @@ from bs4 import BeautifulSoup
 import csv
 
 # Fetch page
-url = "https://threejs.org/"
+url = "https://www.python.org/"
 response = requests.get(url)
 soup = BeautifulSoup(response.text, "html.parser")
 
-# Extract all <h2> tags
+# Extract upcoming events
 data = []
-for heading in soup.find_all("h2"):
-    text = heading.get_text(strip=True)
-    data.append([text])
+events_section = soup.find("div", class_="medium-widget event-widget last")
+
+if events_section:
+    for li in events_section.find_all("li"):
+        title = li.find("a").get_text(strip=True)
+        link = "https://www.python.org" + li.find("a")["href"]
+        date = li.find("time").get_text(strip=True)
+        data.append([title, date, link])
 
 # Save to CSV
-with open("headings_report.csv", mode="w", newline='', encoding="utf-8") as file:
+with open("python_org_events.csv", mode="w", newline='', encoding="utf-8") as file:
     writer = csv.writer(file)
-    writer.writerow(["Heading"])
+    writer.writerow(["Event Title", "Date", "Link"])
     writer.writerows(data)
 
-print("Report saved as 'headings_report.csv'")
+print("Event report saved as 'python_org_events.csv'")

@@ -1,17 +1,28 @@
 body {
-    font-family: 'Segoe UI', sans-serif;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
 }
-
-h1 {
-    font-weight: bold;
-    color: #2c3e50;
-}
-
 .card {
-    border-radius: 12px;
+  border-radius: 12px;
+}
+.navbar-brand {
+  color: #0d6efd;
+}
+#status {
+  font-family: monospace;
 }
 
-.btn {
-    border-radius: 8px;
-    font-weight: 600;
+body.dark {
+  background: #121214;
+  color: #e6e6e6;
+}
+body.dark .card {
+  background: #1e1e22;
+  color: #e6e6e6;
+  border-color: #2a2a2f;
+}
+body.dark .navbar {
+  background: #1b1b1f;
+}
+body.dark .table {
+  color: #e6e6e6;
 }

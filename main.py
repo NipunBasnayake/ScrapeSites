@@ -1,21 +1,50 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 import subprocess
 import platform
+import threading
+import re
 from scraper import scrape_div_class
 
-def on_scrape_click():
+def validate_url(url):
+    pattern = re.compile(r'^(http|https)://')
+    return bool(pattern.match(url))
+
+def run_scraper():
     url = url_entry.get().strip()
     div_class = div_class_entry.get().strip()
+
     if not url or not div_class:
         messagebox.showerror("Input Error", "Please enter both URL and Div class name.")
         return
+    
+    if not validate_url(url):
+        messagebox.showerror("Invalid URL", "Please enter a valid URL starting with http:// or https://")
+        return
 
-    success, message = scrape_div_class(url, div_class)
-    if success:
-        messagebox.showinfo("Success", "✅ " + message)
-    else:
-        messagebox.showwarning("Warning", message)
+    progress.start()
+    status_var.set("Scraping in progress...")
+    scrape_btn.config(state="disabled")
+
+    def scrape_task():
+        try:
+            success, message = scrape_div_class(url, div_class)
+            if success:
+                status_var.set("✅ Scraping completed successfully")
+                messagebox.showinfo("Success", message)
+                if auto_open_var.get():
+                    open_csv()
+            else:
+                status_var.set("⚠ Warning during scraping")
+                messagebox.showwarning("Warning", message)
+        except Exception as e:
+            status_var.set("❌ Error occurred")
+            messagebox.showerror("Error", f"Scraping failed:\n{e}")
+        finally:
+            progress.stop()
+            scrape_btn.config(state="normal")
+
+    threading.Thread(target=scrape_task, daemon=True).start()
 
 def open_csv():
     try:
@@ -30,67 +59,47 @@ def open_csv():
         messagebox.showerror("Error", f"Cannot open file:\n{e}")
 
 window = tk.Tk()
-window.title("Div Class Scraper")
-
-window_width = 500
-window_height = 280
-screen_width = window.winfo_screenwidth()
-screen_height = window.winfo_screenheight()
-x = int((screen_width / 2) - (window_width / 2))
-y = int((screen_height / 2) - (window_height / 2))
-window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+window.title("Industrial Web Scraper")
+window.geometry("520x350")
 window.resizable(False, False)
-window.configure(bg="#f4f4f4")
 
-label_font = ("Segoe UI", 12)
-entry_font = ("Segoe UI", 11)
-button_font = ("Segoe UI", 11, "bold")
+style = ttk.Style(window)
+style.theme_use("clam")
+style.configure("TLabel", font=("Segoe UI", 11))
+style.configure("TButton", font=("Segoe UI", 11, "bold"), padding=6)
+style.configure("TEntry", font=("Segoe UI", 11))
 
-frame = tk.Frame(window, bg="#f4f4f4", padx=20, pady=20)
-frame.pack(expand=True)
+main_frame = ttk.Frame(window, padding=20)
+main_frame.pack(fill="both", expand=True)
 
-heading = tk.Label(frame, text="Scrape Text by Div Class Name", font=("Segoe UI", 16, "bold"), bg="#f4f4f4", fg="#333")
+heading = ttk.Label(main_frame, text="🌐 Industrial Web Scraper", font=("Segoe UI", 16, "bold"))
 heading.pack(pady=(0, 15))
 
-url_label = tk.Label(frame, text="Enter Website URL:", font=label_font, bg="#f4f4f4", anchor="w")
-url_label.pack(fill='x')
-url_entry = tk.Entry(frame, width=50, font=entry_font, relief="groove", borderwidth=2)
-url_entry.pack(pady=(2, 12))
+ttk.Label(main_frame, text="Enter Website URL:").pack(anchor="w")
+url_entry = ttk.Entry(main_frame, width=50)
+url_entry.pack(pady=(0, 12))
 
-div_class_label = tk.Label(frame, text="Enter Div Class Name:", font=label_font, bg="#f4f4f4", anchor="w")
-div_class_label.pack(fill='x')
-div_class_entry = tk.Entry(frame, width=50, font=entry_font, relief="groove", borderwidth=2)
-div_class_entry.pack(pady=(2, 15))
+ttk.Label(main_frame, text="Enter Div Class Name:").pack(anchor="w")
+div_class_entry = ttk.Entry(main_frame, width=50)
+div_class_entry.pack(pady=(0, 15))
 
-btn_frame = tk.Frame(frame, bg="#f4f4f4")
-btn_frame.pack()
+auto_open_var = tk.BooleanVar(value=True)
+ttk.Checkbutton(main_frame, text="Auto-open CSV after scraping", variable=auto_open_var).pack(anchor="w", pady=(0, 15))
 
-scrape_btn = tk.Button(
-    btn_frame,
-    text="Scrape Data",
-    font=button_font,
-    bg="#4CAF50",
-    fg="white",
-    activebackground="#45a049",
-    relief="flat",
-    padx=15,
-    pady=7,
-    command=on_scrape_click
-)
-scrape_btn.grid(row=0, column=0, padx=10)
+btn_frame = ttk.Frame(main_frame)
+btn_frame.pack(pady=(0, 10))
 
-open_btn = tk.Button(
-    btn_frame,
-    text="Open CSV",
-    font=button_font,
-    bg="#2196F3",
-    fg="white",
-    activebackground="#1976D2",
-    relief="flat",
-    padx=15,
-    pady=7,
-    command=open_csv
-)
-open_btn.grid(row=0, column=1, padx=10)
+scrape_btn = ttk.Button(btn_frame, text="🚀 Scrape Data", command=run_scraper)
+scrape_btn.grid(row=0, column=0, padx=8)
+
+open_btn = ttk.Button(btn_frame, text="📂 Open CSV", command=open_csv)
+open_btn.grid(row=0, column=1, padx=8)
+
+progress = ttk.Progressbar(main_frame, mode="indeterminate", length=400)
+progress.pack(pady=(10, 5))
+
+status_var = tk.StringVar(value="Ready")
+status_label = ttk.Label(main_frame, textvariable=status_var, foreground="gray")
+status_label.pack(anchor="w")
 
 window.mainloop()

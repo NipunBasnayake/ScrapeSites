@@ -1,135 +1,102 @@
-import requests
-from bs4 import BeautifulSoup
-import csv, json, os
+import os, csv, json, time, logging, requests
 import pandas as pd
-import time
-import logging
+from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+from utils.selectors import extract_value, find_elements
+from utils.pagination import detect_next_page
 
 LOG_PATH = os.path.join("logs", "scraper.log")
 os.makedirs("logs", exist_ok=True)
 os.makedirs("outputs", exist_ok=True)
 
-logging.basicConfig(
-    filename=LOG_PATH,
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+logging.basicConfig(filename=LOG_PATH, level=logging.INFO)
 
-DEFAULT_HEADERS = {"User-Agent": "IndustrialScraper/1.0 (+https://example.com)"}
-
+DEFAULT_HEADERS = {"User-Agent": "IndustrialScraper/2.0 (+https://example.com)"}
 
 def _save_outputs(data_list, base_name="scraped_data"):
-    # ensure outputs dir
     csv_path = os.path.join("outputs", base_name + ".csv")
     json_path = os.path.join("outputs", base_name + ".json")
     xlsx_path = os.path.join("outputs", base_name + ".xlsx")
 
     # CSV
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["index", "value"])
-        for i, v in enumerate(data_list, 1):
-            writer.writerow([i, v])
+        writer = csv.DictWriter(f, fieldnames=data_list[0].keys())
+        writer.writeheader()
+        writer.writerows(data_list)
 
     # JSON
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(data_list, f, ensure_ascii=False, indent=2)
 
-    # Excel via pandas
-    df = pd.DataFrame({"value": data_list})
-    df.to_excel(xlsx_path, index_label="index")
+    # Excel
+    pd.DataFrame(data_list).to_excel(xlsx_path, index=False)
 
     return {"csv": csv_path, "json": json_path, "xlsx": xlsx_path}
 
-
 def scrape_data(
     url,
-    selector_type="class",
-    selector_value="",
-    attr=None,
-    pagination=None,  # dict: {"pattern": "https://site/page={}", "start":1, "count":5, "delay":1}
+    selectors=[{"type": "class", "value": "title", "attr": None, "regex": None}],
+    nested_selectors=None,
+    pagination_auto=False,
     timeout=10,
     headers=None,
 ):
-    """
-    Return (success:bool, payload: dict or error string)
-    payload when success contains:
-      { "data": [ ... ], "files": {csv/json/xlsx paths} }
-    """
     headers = headers or DEFAULT_HEADERS
     results = []
     errors = []
-    try:
-        pages = 1
-        page_urls = [url]
 
-        # build pagination urls if requested
-        if pagination:
-            pattern = pagination.get("pattern")
-            start = int(pagination.get("start", 1))
-            count = int(pagination.get("count", 1))
-            if pattern:
-                page_urls = []
-                for i in range(start, start + count):
-                    page_urls.append(pattern.format(i))
-                pages = len(page_urls)
+    def scrape_page(page_url):
+        try:
+            resp = requests.get(page_url, timeout=timeout, headers=headers)
+            resp.raise_for_status()
+        except Exception as e:
+            errors.append(f"Fetch failed ({page_url}): {e}")
+            return None
+        return BeautifulSoup(resp.text, "html.parser")
 
-        for idx, page_url in enumerate(page_urls, 1):
-            try:
-                resp = requests.get(page_url, timeout=timeout, headers=headers)
-                resp.raise_for_status()
-            except Exception as e:
-                errors.append(f"Page fetch failed ({page_url}): {e}")
-                logging.warning(errors[-1])
-                continue
+    page_url = url
+    while page_url:
+        soup = scrape_page(page_url)
+        if not soup:
+            break
 
-            soup = BeautifulSoup(resp.text, "html.parser")
+        # extract data
+        rows = []
+        for i, sel in enumerate(selectors):
+            elements = find_elements(soup, sel["type"], sel["value"])
+            if not rows:
+                rows = [{} for _ in range(len(elements))]
+            for idx, el in enumerate(elements):
+                rows[idx][f"field_{i+1}"] = extract_value(el, sel.get("attr"), sel.get("regex"), page_url)
 
-            # find elements by selector type
-            if selector_type == "class":
-                elements = soup.find_all(class_=selector_value)
-            elif selector_type == "id":
-                el = soup.find(id=selector_value)
-                elements = [el] if el else []
-            elif selector_type == "tag":
-                elements = soup.find_all(selector_value)
-            elif selector_type == "css":
-                elements = soup.select(selector_value)
+        # nested scraping
+        if nested_selectors:
+            for row in rows:
+                link = row.get("field_1")
+                if link:
+                    nested_soup = scrape_page(link)
+                    if nested_soup:
+                        for j, sel in enumerate(nested_selectors):
+                            els = find_elements(nested_soup, sel["type"], sel["value"])
+                            row[f"nested_{j+1}"] = extract_value(
+                                els[0], sel.get("attr"), sel.get("regex"), link
+                            ) if els else None
+
+        results.extend(rows)
+
+        # pagination
+        if pagination_auto:
+            next_page = detect_next_page(soup, page_url)
+            if next_page:
+                page_url = next_page
+                time.sleep(1)
             else:
-                return False, f"Unknown selector_type: {selector_type}"
+                break
+        else:
+            break
 
-            # extract attribute or text
-            for el in elements:
-                if attr:
-                    val = el.get(attr)
-                    # if attribute is URL-like, make absolute
-                    if (
-                        val
-                        and isinstance(val, str)
-                        and (val.startswith("/") or val.startswith("./"))
-                    ):
-                        try:
-                            val = urljoin(page_url, val)
-                        except Exception:
-                            pass
-                else:
-                    val = el.get_text(" ", strip=True)
-                if val:
-                    results.append(val)
+    if not results:
+        return False, "No data found."
 
-            # polite delay between pages (if pagination)
-            if pagination and idx < pages:
-                time.sleep(float(pagination.get("delay", 1)))
-
-        if not results:
-            msg = "No data found for that selector."
-            logging.info(msg)
-            return False, msg
-
-        files = _save_outputs(results)
-        return True, {"data": results, "files": files, "errors": errors}
-
-    except Exception as e:
-        logging.exception("Fatal scraper error")
-        return False, str(e)
+    files = _save_outputs(results)
+    return True, {"data": results, "files": files, "errors": errors}

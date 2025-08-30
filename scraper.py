@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from utils.selectors import extract_value, find_elements
 from utils.pagination import detect_next_page
+from utils.request_handler import get
 
 LOG_PATH = os.path.join("logs", "scraper.log")
 os.makedirs("logs", exist_ok=True)
@@ -45,12 +46,10 @@ def scrape_data(
     results = []
     errors = []
 
-    def scrape_page(page_url):
-        try:
-            resp = requests.get(page_url, timeout=timeout, headers=headers)
-            resp.raise_for_status()
-        except Exception as e:
-            errors.append(f"Fetch failed ({page_url}): {e}")
+    def scrape_page(page_url, timeout, headers):
+        resp = get(page_url, timeout=timeout, headers=headers)
+        if not resp:
+            errors.append(f"Failed to fetch {page_url}")
             return None
         return BeautifulSoup(resp.text, "html.parser")
 

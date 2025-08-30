@@ -1,75 +1,69 @@
 body {
-  font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
-  background: #f5f7fb;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  background: #f7f9fc;
   color: #333;
   transition: background 0.3s, color 0.3s;
 }
 
 /* Navbar */
 .navbar {
-  border-bottom: 2px solid #e9ecef;
+  background: linear-gradient(90deg, #0d6efd, #0dcaf0);
 }
 .navbar-brand {
+  color: #fff !important;
   font-weight: 700;
-  font-size: 1.25rem;
-  background: linear-gradient(90deg, #0d6efd, #6610f2);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 1.3rem;
+  letter-spacing: 0.5px;
+}
+#darkToggle {
+  border-radius: 20px;
+  padding: 2px 14px;
+  font-size: 0.8rem;
 }
 
 /* Cards */
 .card {
   border-radius: 16px;
   border: none;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s;
 }
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
 }
 
 /* Buttons */
-.btn {
-  border-radius: 10px;
-  font-weight: 500;
-}
 .btn-success {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(90deg, #198754, #20c997);
   border: none;
 }
 .btn-success:hover {
-  background: linear-gradient(135deg, #218838, #198754);
+  background: linear-gradient(90deg, #157347, #198754);
 }
 .btn-outline-primary {
-  border: 2px solid #0d6efd;
-  color: #0d6efd;
+  border-radius: 20px;
+  border-width: 2px;
 }
 .btn-outline-primary:hover {
   background: #0d6efd;
   color: #fff;
 }
 
-/* Inputs */
-.form-control, .form-select {
-  border-radius: 10px;
-  border: 1px solid #ced4da;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.form-control:focus, .form-select:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
-}
-
-/* Table */
-.table-striped > tbody > tr:nth-of-type(odd) {
-  background-color: rgba(13,110,253,0.05);
-}
-
-/* Status */
+/* Status text */
 #status {
   font-family: monospace;
+  font-size: 0.9rem;
   color: #6c757d;
+}
+
+/* DataTable tweaks */
+.table thead th {
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+}
+.table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: rgba(13, 110, 253, 0.05);
 }
 
 /* Dark Mode */
@@ -77,23 +71,22 @@ body.dark {
   background: #121214;
   color: #e6e6e6;
 }
-body.dark .navbar {
-  background: #1b1b1f;
-  border-bottom-color: #2a2a2f;
-}
 body.dark .card {
   background: #1e1e22;
   color: #e6e6e6;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+body.dark .navbar {
+  background: linear-gradient(90deg, #1f1f23, #2a2a2f);
+}
+body.dark .table thead th {
+  background: #0dcaf0;
 }
 body.dark .table-striped > tbody > tr:nth-of-type(odd) {
-  background-color: rgba(100,149,237,0.1);
+  background-color: rgba(255, 255, 255, 0.05);
 }
-body.dark .btn-outline-primary {
-  border-color: #66b2ff;
-  color: #66b2ff;
-}
-body.dark .btn-outline-primary:hover {
-  background: #66b2ff;
-  color: #000;
+
+/* Toasts */
+.toast {
+  border-radius: 10px;
+  font-size: 0.9rem;
 }
